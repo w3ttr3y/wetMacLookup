@@ -10,8 +10,8 @@ dist
 build
 eggs
 parts
-bin
-var
+#bin
+#var
 sdist
 develop-eggs
 .installed.cfg
@@ -34,9 +34,3 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
-
-# wireshark's manuf file
-var/manuf
-
-#Python's netaddr library - https://pypi.python.org/pypi/netaddr/
-bin/netaddr
