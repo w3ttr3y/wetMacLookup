@@ -3,22 +3,6 @@
 import os
 import sys
 
-def getWiresharkOrg2(m):
-    try:
-        with open('manuf') as file:
-            data = file.readlines()
-            oui = m[0:8].upper()
-            max = len(data)
-            for x in range(0,max):
-                if oui in data[x]:
-                    return data[x]
-    except IOError:
-        import os
-        if not os.path.exists('manuf'):
-            import urllib
-            file = urllib.urlopen("http://anonsvn.wireshark.org/wireshark/trunk/manuf")
-            getWiresharkOrg2(m)
-
 def createLookup(library=None):
     if(library == "netaddr"):
         import wetoidlookup.netaddrorglookup
