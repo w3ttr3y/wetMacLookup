@@ -1,11 +1,18 @@
 #!/usr/bin/env python
 
 import re
+import os
 
 class WiresharkOIDLookup:
     wsRx = re.compile(r"(?P<mac_prefix>[0-9a-fA-F:.-]+)(?:/(?P<mac_mask>\d+))?\s+(?:(?P<vendor>\S+)\s*(?P<comment>#.*)?$)?(?:(?P<vendor2>.+)\s*$)?")
     macRx = re.compile(r"[a-f0-9]{2}")
     lookups = {}
+    
+    network = True
+    readonly = False
+    
+    def __init__(self, network=True, readonly=False):
+        self.network = network
     
     def parseMac(self, mac):
         # Not efficient, but it gets the job done
@@ -45,23 +52,58 @@ class WiresharkOIDLookup:
         #else:
         #    print "line didn't match: %s" % (line)
 
+    def loadPickleFile(self, lookupFile, version=1):
+        #import pickle
+        import cPickle as pickle
+        try:
+            self.lookups = pickle.load(open(lookupFile, "rb"))
+        except IOError:
+            if os.path.exists(lookupFile):
+               raise
+            if not self.network:
+                #don't have the file and we're not allowed to download it
+                raise            
+            import urllib
+            self.loadStream()
+            if not self.readonly:
+                pickle.dump( self.lookups, open( lookupFile, "wb" ), version )
+        
+    def loadStream(self, lookupStream=None):
+        if lookupStream is None:
+            if self.readonly:
+                #TODO: throw an error as we don't have a file and are in readonly mode
+                pass
+            else:
+                import urllib
+                lookupStream = urllib.urlopen("http://anonsvn.wireshark.org/wireshark/trunk/manuf")
+        
+        for line in lookupStream:
+            if line[0] == "#":
+                continue
+            items = self.parseLine(line)
+            if items is not None:
+                (mac, mask, vendor, comment) = items
+                if mask in self.lookups:
+                    self.lookups[mask][mac] = (vendor, comment)
+                else:
+                    self.lookups[mask] = {mac: (vendor,comment)}
+
+
     def loadFile(self, lookupFile):
         try:
-            with open(lookupFile) as file:
-                for line in file:
-                    if line[0] == "#":
-                        continue
-                    items = self.parseLine(line)
-                    if items is not None:
-                        (mac, mask, vendor, comment) = items
-                        if mask in self.lookups:
-                            self.lookups[mask][mac] = (vendor, comment)
-                        else:
-                            self.lookups[mask] = {mac: (vendor,comment)}
+            with open(lookupFile) as fs:
+                self.loadStream(fs)
         except IOError:
             import os
-            if not os.path.exists(lookupFile):
-                import urllib
+            if os.path.exists(lookupFile):
+                raise
+            if not self.network:
+                #don't have the file and we're not allowed to download it
+                raise
+            import urllib
+            if self.readonly:
+                self.loadStream()
+            else:
                 urllib.urlretrieve ("http://anonsvn.wireshark.org/wireshark/trunk/manuf", lookupFile)
                 self.loadFile(lookupFile)
         
@@ -76,8 +118,7 @@ class WiresharkOIDLookup:
                 return self.lookups[netmask][m][0]
 
 if __name__ == '__main__':
-    #foo = WiresharkOIDLookup()
-    print os.path.join(os.path.dirname(__file__), '../usr/manuf')
-    #foo.loadFile(os.path.join(os.path.dirname(__file__), '../usr/manuf'))
-    #for mac in ["68:5b:35:7b:16:ed", "a8:bb:cf:1d:4b:76", "d2:00:1a:01:05:40"]:
-    #    print "%s: %s" % (mac, foo.lookup(mac))
+    foo = WiresharkOIDLookup()
+    foo.loadFile(os.path.join(os.path.dirname(__file__), '../usr/manuf'))
+    for mac in ["68:5b:35:7b:16:ed", "a8:bb:cf:1d:4b:76", "d2:00:1a:01:05:40"]:
+        print "%s: %s" % (mac, foo.lookup(mac))
