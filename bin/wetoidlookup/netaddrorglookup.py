@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
-import netaddr
+try:
+    import netaddr
+except ImportError:
+    import sys
+    sys.stderr.write("Unable to import netaddr library.  You may need to download it. https://pypi.python.org/packages/source/n/netaddr/netaddr-0.7.10.tar.gz#md5=605cfd09ff51eaeff0ffacdb485e270b")
+    raise
 
 class NetaddrOrgLookup:
     
